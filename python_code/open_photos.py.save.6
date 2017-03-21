@@ -1,0 +1,39 @@
+#!/usr/bin/python
+
+import pygame
+import time
+import os
+
+pygame.init()
+windowInfo = pygame.display.Info()
+balk_size = windowInfo.current_h/20
+x=0
+image=[1,2,3,4,5,6,7,8,9,10]
+
+for file in os.listdir("/home/pi/usbdrv"):
+	image[x] = 0
+	x = x + 1
+
+x = 0
+for file in os.listdir("/home/pi/usbdrv"):
+	if file.endswith(".png"):
+		image[x] = file
+		x = x + 1			
+
+print (x)
+
+screen = pygame.display.set_mode((windowInfo.current_w,(windowInfo.current_h-balk_size)))
+image = pygame.image.load(image[1])
+image = pygame.transform.scale(image, (windowInfo.current_w,(windowInfo.current_h-balk_size)))
+
+gameLoop = True
+while gameLoop:
+	
+	for event in pygame.event.get():
+		
+		if (event.type==pygame.QUIT):
+	
+			gameLoop = False
+
+	screen.blit(image, (0,0))
+	pygame.display.flip()

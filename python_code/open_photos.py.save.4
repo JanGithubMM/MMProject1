@@ -1,0 +1,30 @@
+#!/usr/bin/python
+
+import pygame
+import time
+import os
+
+pygame.init()
+windowInfo = pygame.display.Info()
+balk_size = windowInfo.c
+urrent_h/20
+
+for file in os.listdir("/home/pi/usbdrv"):
+	if file.endswith(".png"):
+		image[x]
+
+screen = pygame.display.set_mode((windowInfo.current_w,(windowInfo.current_h-balk_size)))
+image = pygame.image.load("/home/pi/usbdrv/3D Model van Movemat voor ouderen.png")
+image = pygame.transform.scale(image, (windowInfo.current_w,(windowInfo.current_h-balk_size)))
+
+gameLoop = True
+while gameLoop:
+	
+	for event in pygame.event.get():
+		
+		if (event.type==pygame.QUIT):
+	
+			gameLoop = False
+
+#	screen.blit(image, (0,0))
+#	pygame.display.flip()

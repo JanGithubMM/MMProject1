@@ -1,0 +1,10 @@
+#!/usr/bin/python
+
+																	from Tkinter import *
+
+root = Tk()
+
+canavas = Canvas(root)
+
+root.mainloop()
+
