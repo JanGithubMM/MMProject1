@@ -1,6 +1,6 @@
 from Steps3Functions import *
 
-#oefening_chosen = 4         #voor testen
+#oefening_chosen = 0         #voor testen
 (init_info) = init_steps()
 oefening_chosen = menu_steps(init_info, oefening_selected = 0, welcome = True)
 

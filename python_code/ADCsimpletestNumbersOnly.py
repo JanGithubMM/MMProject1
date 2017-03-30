@@ -11,6 +11,9 @@ pygame.font.init()
 sensorLinks = MCP3008(1)
 sensorRechts = MCP3008(3)
 sensorTrigger = 0.1
+minimumLinks = 1.0
+minimumRechts = 1.0
+
 
 myfont = pygame.font.SysFont("Comic Sans MS", 30)
 text01 = myfont.render("0,1", 1, (255,255,0))
@@ -22,7 +25,15 @@ text06 = myfont.render("0,6", 1, (255,255,0))
 text07 = myfont.render("0,7", 1, (255,255,0))
 
 while True: 
+	if sensorLinks.value < minimumLinks:
+		minimumLinks = sensorLinks.value
+	if sensorRechts.value < minimumRechts:
+		minimumRechts = sensorRechts.value
+	sL = sensorLinks.value - minimumLinks
+	sR = sensorRechts.value - minimumRechts
+	#print sL, sR
 	print sensorLinks.value, sensorRechts.value
+	#print sensorLinks.value, sensorRechts.value, minimumLinks, minimumRechts, sL, sR
 	time.sleep(0.1)
 
 while True:
