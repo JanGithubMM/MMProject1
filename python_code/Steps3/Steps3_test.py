@@ -1,3 +1,5 @@
+#typed on the computer
+
 def InitSteps():
     Initsensors()
     InitPygameAndScreen()
