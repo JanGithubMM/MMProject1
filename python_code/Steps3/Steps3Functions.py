@@ -1,3 +1,4 @@
+
 from __future__ import division
 import pygame
 import time
@@ -6,8 +7,6 @@ import sys
 from gpiozero import MCP3008
 import RPi.GPIO as GPIO
 import math
-
-#typed on the pi
 
 kleine_kaartjes = [None,None,None,None,None,None,None]
 grote_kaartjes = [[],[],[],[],[],[],[]]
@@ -26,14 +25,14 @@ def init_pygame_and_screen():  #pygame en screen init
     windowInfo = pygame.display.Info()
     screen_w = windowInfo.current_w
     screen_h = windowInfo.current_h
-    #screen_w = 800                     #voor testen met andere schermresolutie
-    #screen_h = 600                     #voor testen met andere schermresolutie
+    screen_w = 300                     #voor testen met andere schermresolutie
+    screen_h = 800                     #voor testen met andere schermresolutie
     screen = pygame.display.set_mode((screen_w,screen_h))
     pygame.mouse.set_visible(False)
     return (screen, screen_w, screen_h)
 
 def init_variables(screen_h):
-    my_font = pygame.font.SysFont("Arial", int(screen_h/25))
+    my_font = pygame.font.SysFont("Arial", int(screen_h/10))
     return my_font
 
 def init_steps():
@@ -44,18 +43,12 @@ def init_steps():
 
 def fotos_laden(screen_w, screen_h):           #fotos inladen en schalen
     screen_ratio = ((screen_w*(4/5)) / screen_h)
-    print(screen_ratio)
-    print((screen_w*(4/5)),screen_h)
     usbStickHasNoPhotos = True
     for file in os.listdir("/home/pi/usbdrv"):
         if file.endswith(".png")|file.endswith(".PNG")|file.endswith(".jpg")|file.endswith(".JPG")|file.endswith(".jpeg")|file.endswith(".JPEG"):
             usbStickHasNoPhotos = False
             image = pygame.image.load("/home/pi/usbdrv/"+file)
-            image_ratio = image.get_width()/image.get_height()
-            if image_ratio < screen_ratio:          #zwarte balk aan de zijkant
-                    image = pygame.transform.scale(image, (int(screen_h*image_ratio), screen_h))
-            else:                                   #zwarte balk aan de onder en bovenkant
-                    image = pygame.transform.scale(image, ((screen_w*(4/5)), ((screen_w*(4/5))*image_ratio)))
+            image = scale_binnen_grenzen(image, screen_w*(4/5), screen_h)
             yield image
     if (usbStickHasNoPhotos):
             for file in os.listdir("/home/pi/Pictures/Voorbeeldfotos"):
@@ -186,7 +179,7 @@ def oefening_steps(init_info, oefening_chosen):
     oefening = Oefening(oefening_chosen, screen_w, screen_h)
     uitvoeringen_totaal = oefening.aantal_uitvoeringen
     uitvoeringen_gedaan = 0         #De oefening start altijd met 0 uitvoeringen.
-    uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font, verhoging = 0)
+    uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font, verhoging = 0)
 
     fase = 1        #De oefeningen starten allemaal in fase 1
     houding = 1     #De oefeningen starten allemaal in houding 1
@@ -198,17 +191,17 @@ def oefening_steps(init_info, oefening_chosen):
         check_keys()
         set_sensor_info(screen, achtergrond, oefening, oefening_chosen, houding, s_l, s_r, screen_h, screen_w)   #niet afhankelijk van de fase
 
-        time.sleep(0.02)
+        time.sleep(0.01)
         if(fase == 1):      #houding 1 aanhouden
-            set_houding(screen, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
+            set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
 
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
                 teller += 1
                 set_photo(screen, photo, photo_pos, screen_w, screen_h, teller, oefening.teller_totaal)
             if(teller > oefening.teller_totaal):         #houding 1 afgerond
-                uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
+                uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
                 photo, photo_pos = select_volgende_foto(foto_generator, screen_w)    #alvast de volgende foto inladen
-                set_houding(screen, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
+                set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
                 houding = 2         #wisselen naar houding 2
                 teller = 0
                 fase = 2
@@ -220,14 +213,14 @@ def oefening_steps(init_info, oefening_chosen):
                 screen.blit(achtergrond, (screen_w/5,0), area=[screen_w/5,0,screen_w*(4/5),screen_h])   #achtergrond foto maken
                 fase = 3
         elif(fase == 3):    #houding 2 aanhouden
-            set_houding(screen, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
+            set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
                 teller += 1
                 set_photo(screen, photo, photo_pos, screen_w, screen_h, teller, oefening.teller_totaal)
             if(teller > oefening.teller_totaal):         #houding 2 afgerond
-                uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
+                uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
                 photo, photo_pos = select_volgende_foto(foto_generator, screen_w)    #alvast de volgende foto inladen
-                set_houding(screen, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
+                set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
                 houding = 1         #wisselen naar houding 1
                 teller = 0
                 fase = 4
@@ -285,25 +278,26 @@ def select_volgende_foto(foto_generator, screen_w):
     photo_pos_x = math.ceil((screen_w*(3/5))-(volgende_foto.get_width()/2))
     return volgende_foto, photo_pos_x
 
-def verhoog_aantal_uitvoeringen(screen, achtergrond, screen_h, aantal_uitvoeringen, uitvoeringen_totaal, my_font, verhoging = 1):
+def verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, aantal_uitvoeringen, uitvoeringen_totaal, my_font, verhoging = 1):
     aantal_uitvoeringen += verhoging
     uitvoering_text = my_font.render("%s van de %s" % (aantal_uitvoeringen, uitvoeringen_totaal), 1, (0,0,0))
-    screen.blit(achtergrond, (50,screen_h-(screen_h/22)-uitvoering_text.get_height()), area=[50,screen_h-(screen_h/22)-uitvoering_text.get_height(),uitvoering_text.get_width(),uitvoering_text.get_height()])
-    screen.blit(uitvoering_text, (50, screen_h-(screen_h/22)-uitvoering_text.get_height())) #de uitvoeringstekst
-    pygame.display.update()
+    screen.blit(achtergrond, (0,screen_h*(4/5)), area=[0,screen_h*(4/5),screen_w*(1/5),screen_h*(1/5)])
+    uitvoering_text = scale_binnen_grenzen(uitvoering_text, screen_w*(1/5), screen_h*(1/5))
+    screen.blit(uitvoering_text, (0, screen_h*(9/10)-uitvoering_text.get_height()/2)) #de uitvoeringstekst
+    pygame.display.update([0,screen_h*(4/5),screen_w*(1/5),screen_h*(1/5)])
     return aantal_uitvoeringen
 
 class Oefening:
     def __init__(self, oefening_chosen, screen_w, screen_h):
         if(oefening_chosen == 0):
             self.teller_totaal = 150
-            self.aantal_uitvoeringen = 5
+            self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/15c_Extensie_knie_in_zit.png")        #aanpasbare afbeelding
-            #self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
-            self.image_houding1 = pygame.transform.smoothscale(self.image_houding1, (int(screen_w/100)*14, int(screen_w/100)*20))
+            self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
+            #self.image_houding1 = pygame.transform.smoothscale(self.image_houding1, (int(screen_w/100)*14, int(screen_w/100)*20))
             self.image_houding2 = pygame.image.load("/home/pi/Documents/Oefeningen/15b_Extensie_knie_in_zit.png")        #aanpasbare afbeelding
-            #self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
-            self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
+            self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
+            #self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
         elif(oefening_chosen == 1):
             self.teller_totaal = 150
             self.aantal_uitvoeringen = 10
@@ -398,14 +392,14 @@ class Oefening:
             elif(oefening_chosen == 5 or oefening_chosen == 6):
                 return(s_l_read(s_l.value) > s_trigger_links and s_r_read(s_r.value) < s_trigger_rechts)
 
-def set_houding(screen, achtergrond, houding, oefening):    
-    houding_x = 20
-    houding_y = 20
+def set_houding(screen, screen_w, screen_h, achtergrond, houding, oefening):    
     if(houding == 1):   #de houding die afgebeeld wordt
         uitleg_plaatje = oefening.image_houding1
     elif(houding == 2):  #de houding die afgebeeld wordt
-        uitleg_plaatje = oefening.image_houding2    
-    screen.blit(achtergrond, (houding_x,houding_y), area=[houding_x,houding_y,uitleg_plaatje.get_width(),uitleg_plaatje.get_height()])
+        uitleg_plaatje = oefening.image_houding2
+    houding_x = screen_w*(1/10)-uitleg_plaatje.get_width()/2
+    houding_y = screen_h*(1/5)-uitleg_plaatje.get_height()/2
+    screen.blit(achtergrond, (houding_x, houding_y), area=[houding_x,houding_y,uitleg_plaatje.get_width(),uitleg_plaatje.get_height()])
     screen.blit(uitleg_plaatje, (houding_x,houding_y))
     pygame.display.update()
 
@@ -417,20 +411,27 @@ def set_sensor_info(screen, achtergrond, oefening, oefening_chosen, houding, s_l
     #x = 0
     #y = screen_h*(2/5)
     
-    hoogte_sensor_links = math.floor(s_l_read(s_l.value) * 300)
-    hoogte_sensor_rechts = math.floor(s_r_read(s_r.value) * 300)
+    #hoogte_sensor_links = math.floor(s_l_read(s_l.value) * 100)
+    #hoogte_sensor_rechts = math.floor(s_r_read(s_r.value) * 100)
+
+    hoogte_sensor_links = s_l_read(s_l.value) * (screen_h*(2/5))
+    hoogte_sensor_rechts = s_r_read(s_r.value) * (screen_h*(2/5))
 
     if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):
         kleur_sensor = (50,255,50)
     else:
         kleur_sensor = (255,50,50)
     
-    screen.blit(achtergrond, (50,screen_h-550), area=[50,screen_h-550,200,305])
-    if(hoogte_sensor_links > 0):
-        pygame.draw.rect(screen,(kleur_sensor),(50,screen_h-250-hoogte_sensor_links,80,hoogte_sensor_links))
-    if(hoogte_sensor_rechts > 0):
-        pygame.draw.rect(screen,(kleur_sensor),(170,screen_h-250-hoogte_sensor_rechts,80,hoogte_sensor_rechts))
-    pygame.display.update((50,screen_h-550,200,305))
+    screen.blit(achtergrond, (0,screen_h*(2/5)), area=[0,screen_h*(2/5),screen_w*(1/5),screen_h*(2/5)])
+    #voetstap_links = pygame.image.load("/home/pi/Downloads/Voetstap_links.png")
+    #voetstap_links = scale_binnen_grenzen(voetstap_links, screen_w*(1/10), screen_h*(2/5), smooth=False)
+    #screen.blit(voetstap_links, (0,screen_h*(2/5)))
+    
+    if(hoogte_sensor_links > 10):
+        pygame.draw.rect(screen,(kleur_sensor),(screen_w*(1/50),math.floor(screen_h*(4/5))-hoogte_sensor_links,screen_w*(3/50),hoogte_sensor_links))
+    if(hoogte_sensor_rechts > 10):
+        pygame.draw.rect(screen,(kleur_sensor),(screen_w*(6/50),math.floor(screen_h*(4/5))-hoogte_sensor_rechts,screen_w*(3/50),hoogte_sensor_rechts))
+    pygame.display.update((0,screen_h*(2/5),screen_w*(1/5),screen_h*(2/5)))
 
     ######
     #pygame.display.update((0,screen_h*(2/5),screen_w/5,screen_h*(2/5)))
@@ -471,12 +472,14 @@ def check_keys():
 
 def s_r_read(value):
     global minimum_rechts
+    minimum_rechts = minimum_rechts + (minimum_rechts/2500)     #om te voorkomen dat er 1 keer een lage waarde wordt gemeten.
     if value < minimum_rechts:
         minimum_rechts = value
     return (value - minimum_rechts)
 
 def s_l_read(value):
     global minimum_links
+    minimum_links = minimum_links + (minimum_links/2500)        #om te voorkomen dat er 1 keer een lage waarde wordt gemeten.
     if value < minimum_links:
         minimum_links = value
     return (value - minimum_links)
@@ -487,15 +490,65 @@ def scale_binnen_grenzen(image, vak_w, vak_h, smooth=False):
     
     if image_ratio < vak_ratio:          #balk aan de zijkant
         if(smooth):
-            image = pygame.transform.smoothscale(image, (int(vak_h/image_ratio), int(vak_h)))
+            image = pygame.transform.smoothscale(image, (int(vak_h*image_ratio), int(vak_h)))
         else:
-            image = pygame.transform.scale(image, (int(vak_h/image_ratio), int(vak_h)))
-    else:                                   #balk aan de onder en bovenkant
+            image = pygame.transform.scale(image, (int(vak_h*image_ratio), int(vak_h)))
+    else:                                #balk aan de onder en bovenkant
         if(smooth):
             image = pygame.transform.smoothscale(image, (int(vak_w), int(vak_w/image_ratio)))
         else:
             image = pygame.transform.scale(image, (int(vak_w), int(vak_w/image_ratio)))
     return image
+
+
+##def excel_save(oefening_result, oefening_selected)
+##    (uitvoeringen_gedaan, gehaald) = oefening_result
+##    import time
+##import pygame
+##import sys
+##import os
+##import openpyxl
+##
+###schema = openpyxl.load_workbook("/home/pi/usbdrv/Oefendata/Oefenschema Steps.xlsx")
+###oefenschema = schema.get_sheet_by_name("Oefenschema")
+##
+##if os.path.isfile("/home/pi/usbdrv/Datalogger Excel Steps.xlsx"):
+##        datalogger = open("/home/pi/usbdrv/Datalogger Excel Steps.xlsx")
+##else:
+##        datalogger = openpyxl.Workbook()
+##
+##
+##dataloggerSheet = datalogger.active
+##dataloggerSheet.title = "Data"
+##dataloggerSheet.cell(row=2, column=2).value = "14 uur"
+##
+##print datalogger
+##
+##datalogger.save("/home/pi/usbdrv/Oefendata/Datalogger Excel Steps.xlsx")
+##
+##pygame.init()
+##pygame.font.init()
+##screen = pygame.display.set_mode()
+##windowInfo = pygame.display.Info()
+##
+##myfont = pygame.font.SysFont("Comic Sans MS", 30)
+##
+##while True:
+##	pygame.draw.rect(screen,(0,0,0),(0,0,windowInfo.current_w,windowInfo.current_h))
+##
+##	text01 = myfont.render(str(oefenschema.cell(row=2,column=2).value + 1), 1, (255,255,0))
+##	
+##	screen.blit(text01,(710,windowInfo.current_h-100))
+##	
+##	pygame.display.flip()
+##	events = pygame.event.get()
+##	for event in events:
+##		if event.type == pygame.KEYDOWN:
+##			pygame.quit()
+##			sys.exit(1)
+##	time.sleep(0.1)
+##
+
 
 
 def oefening_uitleg(init_info, oefening_chosen):
