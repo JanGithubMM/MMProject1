@@ -25,8 +25,8 @@ def init_pygame_and_screen():  #pygame en screen init
     windowInfo = pygame.display.Info()
     screen_w = windowInfo.current_w
     screen_h = windowInfo.current_h
-    screen_w = 300                     #voor testen met andere schermresolutie
-    screen_h = 800                     #voor testen met andere schermresolutie
+    #screen_w = 300                     #voor testen met andere schermresolutie
+    #screen_h = 800                     #voor testen met andere schermresolutie
     screen = pygame.display.set_mode((screen_w,screen_h))
     pygame.mouse.set_visible(False)
     return (screen, screen_w, screen_h)
@@ -282,8 +282,8 @@ def verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, aantal_
     aantal_uitvoeringen += verhoging
     uitvoering_text = my_font.render("%s van de %s" % (aantal_uitvoeringen, uitvoeringen_totaal), 1, (0,0,0))
     screen.blit(achtergrond, (0,screen_h*(4/5)), area=[0,screen_h*(4/5),screen_w*(1/5),screen_h*(1/5)])
-    uitvoering_text = scale_binnen_grenzen(uitvoering_text, screen_w*(1/5), screen_h*(1/5))
-    screen.blit(uitvoering_text, (0, screen_h*(9/10)-uitvoering_text.get_height()/2)) #de uitvoeringstekst
+    uitvoering_text = scale_binnen_grenzen(uitvoering_text, screen_w*(1/6), screen_h*(1/6))
+    screen.blit(uitvoering_text, (screen_w*(1/10)-uitvoering_text.get_width()/2, screen_h*(9/10)-uitvoering_text.get_height()/2)) #de uitvoeringstekst
     pygame.display.update([0,screen_h*(4/5),screen_w*(1/5),screen_h*(1/5)])
     return aantal_uitvoeringen
 
