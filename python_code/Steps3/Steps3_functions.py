@@ -1,12 +1,12 @@
-
 from __future__ import division
-import pygame
-import time
-import os
-import sys
+import pygame, time, os, sys
 from gpiozero import MCP3008
 import RPi.GPIO as GPIO
 import math
+import openpyxl
+from openpyxl.styles import PatternFill
+from datetime import datetime
+import exifread
 
 kleine_kaartjes = [None,None,None,None,None,None,None]
 grote_kaartjes = [[],[],[],[],[],[],[]]
@@ -25,21 +25,35 @@ def init_pygame_and_screen():  #pygame en screen init
     windowInfo = pygame.display.Info()
     screen_w = windowInfo.current_w
     screen_h = windowInfo.current_h
-    screen_w = 300                     #voor testen met andere schermresolutie
-    screen_h = 800                     #voor testen met andere schermresolutie
+    #screen_w = 800                     #voor testen met andere schermresolutie
+    #screen_h = 600                     #voor testen met andere schermresolutie
+    print(screen_w, screen_h)
     screen = pygame.display.set_mode((screen_w,screen_h))
     pygame.mouse.set_visible(False)
     return (screen, screen_w, screen_h)
 
 def init_variables(screen_h):
-    my_font = pygame.font.SysFont("Arial", int(screen_h/10))
+    #my_font = pygame.font.SysFont("Arial", int(screen_h/10))
+    my_font = pygame.font.Font("/home/pi/Documents/Fonts/Ruler Stencil Regular.ttf", int(screen_h/10))
     return my_font
+
+def datalogger_init():
+    if not os.path.isdir("/home/pi/usbdrv/Beweegdata"):
+        os.system("mkdir /home/pi/usbdrv/Beweegdata") 
+    if os.path.isfile("/home/pi/usbdrv/Beweegdata/Beweegdata_Steps.xlsx"):
+        datalogger = openpyxl.load_workbook("/home/pi/usbdrv/Beweegdata/Beweegdata_Steps.xlsx") #opent het bestaande document op de usb-stick
+    else:
+        datalogger = openpyxl.load_workbook("/home/pi/Documents/Beweegdata/Beweegdata_Steps_Empty.xlsx") #opent een niet ingevuld exceldocument
+    datalogger_sheet = datalogger.active
+    return datalogger, datalogger_sheet
 
 def init_steps():
     sensors = init_sensors()
     screen, screen_w, screen_h = init_pygame_and_screen()
     my_font = init_variables(screen_h)
-    return (sensors, screen, screen_w, screen_h, my_font)
+    datalogger, datalogger_sheet = datalogger_init()
+    foto_generator = fotos_laden(screen_w, screen_h)
+    return sensors, screen, screen_w, screen_h, my_font, datalogger, datalogger_sheet, foto_generator
 
 def fotos_laden(screen_w, screen_h):           #fotos inladen en schalen
     screen_ratio = ((screen_w*(4/5)) / screen_h)
@@ -48,14 +62,44 @@ def fotos_laden(screen_w, screen_h):           #fotos inladen en schalen
         if file.endswith(".png")|file.endswith(".PNG")|file.endswith(".jpg")|file.endswith(".JPG")|file.endswith(".jpeg")|file.endswith(".JPEG"):
             usbStickHasNoPhotos = False
             image = pygame.image.load("/home/pi/usbdrv/"+file)
-            image = scale_binnen_grenzen(image, screen_w*(4/5), screen_h)
+            image = rotate_image("/home/pi/usbdrv/"+file, image)
+            #image = scale_binnen_grenzen(image, screen_w*(4/5), screen_h)
+            image = scale_binnen_grenzen(image, screen_w*(1304/1920), screen_h*(886/1080))
             yield image
     if (usbStickHasNoPhotos):
             for file in os.listdir("/home/pi/Pictures/Voorbeeldfotos"):
                     if file.endswith(".png")|file.endswith(".PNG")|file.endswith(".jpg")|file.endswith(".JPG")|file.endswith(".jpeg")|file.endswith(".JPEG"):
                             image = pygame.image.load("/home/pi/Pictures/Voorbeeldfotos/"+file)
-                            image = scale_binnen_grenzen(image, screen_w*(4/5), screen_h)
+                            image = scale_binnen_grenzen(image, screen_w*(3/5), screen_h*(3/5))
                             yield image
+
+def rotate_image(file_path, image):
+    tags = exifread.process_file(open(file_path, 'rb'), stop_tag='Orientation')
+    for tag in tags.keys():
+        if tag == "Image Orientation":
+            if (str(tags[tag]) == "Horizontal (normal)"):
+                break   #do nothing
+            elif (str(tags[tag]) == 'Rotated 180'):
+                image = pygame.transform.rotate(image, 180)
+                break
+            elif (str(tags[tag]) == 'Rotated 90 CCW'):
+                image = pygame.transform.rotate(image, 90)
+                break
+            elif (str(tags[tag]) == 'Rotated 90 CW'):
+                image = pygame.transform.rotate(image, 270)
+                break
+##0x0112: ('Orientation', {
+##        1: 'Horizontal (normal)',
+##        2: 'Mirrored horizontal',
+##        3: 'Rotated 180',
+##        4: 'Mirrored vertical',
+##        5: 'Mirrored horizontal then rotated 90 CCW',
+##        6: 'Rotated 90 CCW',
+##        7: 'Mirrored horizontal then rotated 90 CW',
+##        8: 'Rotated 90 CW'
+##                }
+    return image
+
 
 def kaartjes_scalen(screen_w, screen_h):
     aantalOefeningen = 8
@@ -70,8 +114,7 @@ def kaartjes_scalen(screen_w, screen_h):
                                             klein_plaatje = pygame.transform.smoothscale(raw_kaartje,(int (screen_w/4.64),int(pygame.Surface.get_height(raw_kaartje)/pygame.Surface.get_width(raw_kaartje)*(screen_w/4.64))))
                                             kleine_kaartjes[oefeningNummer-1]=klein_plaatje
 
-def menu_steps(init_info, oefening_selected, welcome):
-    sensors, screen, screen_w, screen_h, my_font = init_info
+def menu_steps(sensors, screen, screen_w, screen_h, my_font, oefening_selected, welcome):
     s_l, s_r = sensors
     sensor_trigger = 0.1
     x = oefening_selected
@@ -84,10 +127,19 @@ def menu_steps(init_info, oefening_selected, welcome):
     goed_gedaan3 = pygame.mixer.Sound("/home/pi/Documents/Audio/goed_bezig.wav")
     goed_gedaan_special = pygame.mixer.Sound("/home/pi/Documents/Audio/goed_gedaan_barbershop.wav")
 
-    achtergrond = pygame.image.load("/home/pi/Documents/Photos/Steps_achtergrond_def.png")
+    #achtergrond = pygame.image.load("/home/pi/Documents/Photos/Steps_achtergrond_menu.png")
+    achtergrond = pygame.image.load("/home/pi/Documents/Instructie/Steps_achtergrond.png")
+    opdracht_text = my_font.render("Kies een oefening", 1, (0,0,0))
+    opdracht_text = scale_binnen_grenzen(opdracht_text, screen_w*(2/5), screen_h/10, smooth=True)
     oefening_klaar = pygame.image.load("/home/pi/Documents/Instructie/Oefening_Klaar.png")
+    stap_beide = pygame.image.load("/home/pi/Documents/Instructie/Stap_beide.png")
+    stap_links = pygame.image.load("/home/pi/Documents/Instructie/Stap_links.png")
+    stap_rechts = pygame.image.load("/home/pi/Documents/Instructie/Stap_rechts.png")
     achtergrond = pygame.transform.scale(achtergrond, (screen_w, screen_h),)
     oefening_klaar = pygame.transform.scale(oefening_klaar, (screen_w, screen_h),)
+    stap_beide = scale_binnen_grenzen(stap_beide, screen_w/5, screen_h/5, smooth=True)
+    stap_links = scale_binnen_grenzen(stap_links, screen_w/10, screen_h/10, smooth=True)
+    stap_rechts = scale_binnen_grenzen(stap_rechts, screen_w/10, screen_h/10, smooth=True)
 
     if (welcome):
         pygame.mixer.Sound.play(welkom_audio)
@@ -96,6 +148,10 @@ def menu_steps(init_info, oefening_selected, welcome):
 
     kaartjes_scalen(screen_w, screen_h)
     screen.blit(achtergrond, (0,0))
+    screen.blit(opdracht_text,(screen_w/2-opdracht_text.get_width()/2,0))
+    screen.blit(stap_beide, (screen_w/2 - (stap_beide.get_width()/2), screen_h*(8/10) - (stap_beide.get_height()/2)))
+    screen.blit(stap_links, (screen_w*(1/5) - (stap_beide.get_width()/2), screen_h*(7/10) - (stap_beide.get_height()/2)))
+    screen.blit(stap_rechts, (screen_w*(4/5) - (stap_beide.get_width()/2), screen_h*(7/10) - (stap_beide.get_height()/2)))
 
     huidige_kaartje_x = ((screen_w/2)- pygame.Surface.get_width(grote_kaartjes[0][0])/2)
     huidige_kaartje_y = ((screen_h/2)- pygame.Surface.get_height(grote_kaartjes[0][0])/1.75)
@@ -168,13 +224,12 @@ def menu_steps(init_info, oefening_selected, welcome):
             return x
 
 def oefening_steps(init_info, oefening_chosen):
-    sensors, screen, screen_w, screen_h, my_font = init_info
+    sensors, screen, screen_w, screen_h, my_font, foto_generator = init_info
     s_l, s_r = sensors
     houding1_audio, houding2_audio = init_audio(oefening_chosen)
     achtergrond = set_achtergrond(screen, screen_w, screen_h)
     
-    foto_generator = fotos_laden(screen_w, screen_h)
-    photo, photo_pos = select_volgende_foto(foto_generator, screen_w)   #selecteerde de eerste foto, omdat deze functie nog niet eerder aangeroepen is.
+    photo = select_volgende_foto(foto_generator, screen_w, screen_h)   #selecteerde de eerste foto, omdat deze functie nog niet eerder aangeroepen is.
 
     oefening = Oefening(oefening_chosen, screen_w, screen_h)
     uitvoeringen_totaal = oefening.aantal_uitvoeringen
@@ -184,7 +239,8 @@ def oefening_steps(init_info, oefening_chosen):
     fase = 1        #De oefeningen starten allemaal in fase 1
     houding = 1     #De oefeningen starten allemaal in houding 1
     pygame.mixer.Sound.play(houding1_audio)
-    teller = 0      
+    teller = 0
+    photo_x = 0
     
     while (GPIO.input(4)!=1 and uitvoeringen_gedaan < uitvoeringen_totaal):
 
@@ -196,11 +252,11 @@ def oefening_steps(init_info, oefening_chosen):
             set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
 
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
-                teller += 1
-                set_photo(screen, photo, photo_pos, screen_w, screen_h, teller, oefening.teller_totaal)
-            if(teller > oefening.teller_totaal):         #houding 1 afgerond
+                photo_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal)
+                teller += 1                
+            if(photo_x >= photo.get_width()):         #houding 1 afgerond
                 uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
-                photo, photo_pos = select_volgende_foto(foto_generator, screen_w)    #alvast de volgende foto inladen
+                photo = select_volgende_foto(foto_generator, screen_w, screen_h)    #alvast de volgende foto inladen
                 set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
                 houding = 2         #wisselen naar houding 2
                 teller = 0
@@ -215,11 +271,11 @@ def oefening_steps(init_info, oefening_chosen):
         elif(fase == 3):    #houding 2 aanhouden
             set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
+                photo_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal)
                 teller += 1
-                set_photo(screen, photo, photo_pos, screen_w, screen_h, teller, oefening.teller_totaal)
-            if(teller > oefening.teller_totaal):         #houding 2 afgerond
+            if(photo_x >= photo.get_width()):         #houding 2 afgerond
                 uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
-                photo, photo_pos = select_volgende_foto(foto_generator, screen_w)    #alvast de volgende foto inladen
+                photo = select_volgende_foto(foto_generator, screen_w, screen_h)    #alvast de volgende foto inladen
                 set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
                 houding = 1         #wisselen naar houding 1
                 teller = 0
@@ -234,6 +290,7 @@ def oefening_steps(init_info, oefening_chosen):
     oefening_result = (uitvoeringen_gedaan, uitvoeringen_gedaan >= uitvoeringen_totaal)
     pygame.mixer.stop()
     oefening_klaar = pygame.image.load("/home/pi/Documents/Instructie/Oefening_Klaar.png")
+    oefening_klaar = pygame.transform.scale(oefening_klaar, (screen_w, screen_h))
     screen.blit(oefening_klaar,(0,0))
     pygame.display.update()
     klaar_counter = 0
@@ -245,15 +302,19 @@ def oefening_steps(init_info, oefening_chosen):
             klaar_counter = 0
     return oefening_result
 
-def set_photo(screen, photo, photo_pos_x, screen_w, screen_h, teller, teller_totaal):
+def set_photo(screen, photo, screen_w, screen_h, teller, teller_totaal):
     photo_part_h = photo.get_height()
     photo_part_w = math.ceil(photo.get_width()/teller_totaal)
     photo_part_pos_x = photo_part_w * teller
-    photo_part_pos_y = screen_h/2 - photo_part_h/2
-    screen_part_w_pos = screen_w/teller_totaal * teller
+    photo_part_pos_y = 0
+    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2 + (photo_part_w * teller)
+    screen_part_pos_y = screen_h*(537/1080) - photo_part_h/2
+
+    #print(screen_part_pos_x, photo_part_pos_x)
     
-    screen.blit(photo, (photo_pos_x+photo_part_pos_x,photo_part_pos_y), area=[photo_part_pos_x,0,photo_part_w,photo_part_h]) # van links naar rechts
+    screen.blit(photo, (screen_part_pos_x,screen_part_pos_y), area=[photo_part_pos_x,photo_part_pos_y,photo_part_w,photo_part_h]) # van links naar rechts
     pygame.display.update()
+    return photo_part_pos_x
 
 def select_foto(volgende_foto):
     image = volgende_foto
@@ -261,29 +322,30 @@ def select_foto(volgende_foto):
     return photo
 
 def set_achtergrond(screen, screen_w, screen_h):
-    achtergrond = pygame.image.load("/home/pi/Documents/Instructie/Steps_achtergrond.png")
+    achtergrond = pygame.image.load("/home/pi/Documents/Instructie/Steps_oefening_achtergrond.jpg")
+    #achtergrond = pygame.image.load("/home/pi/Documents/Photos/Steps_achtergrond_def.png")
     achtergrond = pygame.transform.scale(achtergrond, (screen_w, screen_h))
     screen.blit(achtergrond, (0,0))
     pygame.display.update()
     return achtergrond
 
 
-def select_volgende_foto(foto_generator, screen_w):
+def select_volgende_foto(foto_generator, screen_w, screen_h):
     try:
             volgende_foto = foto_generator.next()
     except StopIteration:
-            foto_generator = fotos_laden()
+            foto_generator = fotos_laden(screen_w, screen_h)
             volgende_foto = foto_generator.next()
 
-    photo_pos_x = math.ceil((screen_w*(3/5))-(volgende_foto.get_width()/2))
-    return volgende_foto, photo_pos_x
+    #photo_pos_x = math.ceil((screen_w*(3/5))-(volgende_foto.get_width()/2))
+    return volgende_foto
 
 def verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, aantal_uitvoeringen, uitvoeringen_totaal, my_font, verhoging = 1):
     aantal_uitvoeringen += verhoging
     uitvoering_text = my_font.render("%s van de %s" % (aantal_uitvoeringen, uitvoeringen_totaal), 1, (0,0,0))
     screen.blit(achtergrond, (0,screen_h*(4/5)), area=[0,screen_h*(4/5),screen_w*(1/5),screen_h*(1/5)])
-    uitvoering_text = scale_binnen_grenzen(uitvoering_text, screen_w*(1/5), screen_h*(1/5))
-    screen.blit(uitvoering_text, (0, screen_h*(9/10)-uitvoering_text.get_height()/2)) #de uitvoeringstekst
+    uitvoering_text = scale_binnen_grenzen(uitvoering_text, screen_w*(1/6), screen_h*(1/6))
+    screen.blit(uitvoering_text, (screen_w*(1/10)-uitvoering_text.get_width()/2, screen_h*(9/10)-uitvoering_text.get_height()/2)) #de uitvoeringstekst
     pygame.display.update([0,screen_h*(4/5),screen_w*(1/5),screen_h*(1/5)])
     return aantal_uitvoeringen
 
@@ -500,59 +562,59 @@ def scale_binnen_grenzen(image, vak_w, vak_h, smooth=False):
             image = pygame.transform.scale(image, (int(vak_w), int(vak_w/image_ratio)))
     return image
 
+    ###     excel       ###
 
-##def excel_save(oefening_result, oefening_selected)
-##    (uitvoeringen_gedaan, gehaald) = oefening_result
-##    import time
-##import pygame
-##import sys
-##import os
-##import openpyxl
-##
-###schema = openpyxl.load_workbook("/home/pi/usbdrv/Oefendata/Oefenschema Steps.xlsx")
-###oefenschema = schema.get_sheet_by_name("Oefenschema")
-##
-##if os.path.isfile("/home/pi/usbdrv/Datalogger Excel Steps.xlsx"):
-##        datalogger = open("/home/pi/usbdrv/Datalogger Excel Steps.xlsx")
-##else:
-##        datalogger = openpyxl.Workbook()
-##
-##
-##dataloggerSheet = datalogger.active
-##dataloggerSheet.title = "Data"
-##dataloggerSheet.cell(row=2, column=2).value = "14 uur"
-##
-##print datalogger
-##
-##datalogger.save("/home/pi/usbdrv/Oefendata/Datalogger Excel Steps.xlsx")
-##
-##pygame.init()
-##pygame.font.init()
-##screen = pygame.display.set_mode()
-##windowInfo = pygame.display.Info()
-##
-##myfont = pygame.font.SysFont("Comic Sans MS", 30)
-##
-##while True:
-##	pygame.draw.rect(screen,(0,0,0),(0,0,windowInfo.current_w,windowInfo.current_h))
-##
-##	text01 = myfont.render(str(oefenschema.cell(row=2,column=2).value + 1), 1, (255,255,0))
-##	
-##	screen.blit(text01,(710,windowInfo.current_h-100))
-##	
-##	pygame.display.flip()
-##	events = pygame.event.get()
-##	for event in events:
-##		if event.type == pygame.KEYDOWN:
-##			pygame.quit()
-##			sys.exit(1)
-##	time.sleep(0.1)
-##
+def excel_start_oefening():
+    return datetime.now()
+
+def excel_save(datalogger, datalogger_sheet, start_tijd_oefening, oefening_result, oefening_chosen):
+    (uitvoeringen_gedaan, gehaald) = oefening_result
+
+    #(oefening = "Extensie knie", tijdOefening = "1 min", aantalKeer = 0, afgerond = "ja", moeilijkheid = 1, client = "client"):
+
+    rowCounter = 2
+    while datalogger_sheet.cell(row=rowCounter, column=1).value != None:
+            rowCounter += 1
+            
+    datalogger_sheet.cell(row=rowCounter, column=1).value = datetime.now().strftime('%d-%m-%Y')
+    datalogger_sheet.cell(row=rowCounter, column=2).value = datetime.now().strftime('%H:%M')
+    datalogger_sheet.cell(row=rowCounter, column=3).value = get_oefening_naam(oefening_chosen)
+    datalogger_sheet.cell(row=rowCounter, column=4).value = (datetime.now() - start_tijd_oefening)
+    datalogger_sheet.cell(row=rowCounter, column=5).value = uitvoeringen_gedaan
+    if gehaald:
+            datalogger_sheet.cell(row=rowCounter, column=6).fill = PatternFill(start_color='00ff00', end_color='00ff00', fill_type = 'solid')
+    else:
+            datalogger_sheet.cell(row=rowCounter, column=6).fill = PatternFill(start_color='ff0000', end_color='ff0000', fill_type = "solid")
+    #datalogger_sheet.cell(row=rowCounter, column=7).value = moeilijkheid
+    #datalogger_sheet.cell(row=rowCounter, column=8).value = client
+    datalogger.save("/home/pi/usbdrv/Beweegdata/Beweegdata_Steps.xlsx")
+    datalogger.save("/home/pi/Documents/Beweegdata/Beweegdata_Steps.xlsx") #Slaat op als root in niet-startx modus en overwrite files van vorige usb-sticks
+
+def convert_timedelta(duration):
+	seconds = duration.seconds
+	minutes = (seconds % 3600) // 60
+	seconds = (seconds % 60)
+	return "{} min en {} sec".format(minutes, seconds)
 
 
 
-def oefening_uitleg(init_info, oefening_chosen):
-    sensors, screen, screen_w, screen_h, my_font = init_info
+def get_oefening_naam(oefening_nummer):
+    if(oefening_nummer == 0):
+        oefening_naam = "Knie extensie"
+    elif(oefening_nummer == 1):
+        oefening_naam = "Staan zitten"
+    elif(oefening_nummer == 2):
+        oefening_naam = "Achteren lopen"
+    elif(oefening_nummer == 3):
+        oefening_naam = "Been heffen"
+    elif(oefening_nummer == 4):
+        oefening_naam = "Hak naar bil"
+    elif(oefening_nummer == 5 or oefening_nummer == 6):
+        oefening_naam = "Op 1 been staan"
+    return oefening_naam
+
+
+def oefening_uitleg(sensors, screen, screen_w, screen_h, my_font, oefening_chosen):
 
     if(oefening_chosen == 0):
         #image
