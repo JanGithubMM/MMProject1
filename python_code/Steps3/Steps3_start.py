@@ -1,6 +1,6 @@
 from Steps3_functions import *
 
-oefening_chosen = 1         #voor testen
+oefening_chosen = 0         #voor testen
 sensors, screen, screen_w, screen_h, my_font, datalogger, datalogger_sheet, foto_generator = init_steps()
 oefening_chosen = menu_steps(sensors, screen, screen_w, screen_h, my_font, oefening_selected = 0, welcome = True)
 

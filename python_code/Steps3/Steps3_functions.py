@@ -7,8 +7,9 @@ import openpyxl
 from openpyxl.styles import PatternFill
 from datetime import datetime
 import exifread
+import random
 
-kleine_kaartjes = [None,None,None,None,None,None,None]
+kleine_kaartjes = [None,None,None,None,None,None]
 grote_kaartjes = [[],[],[],[],[],[],[]]
 minimum_links = 1.0
 minimum_rechts = 1.0
@@ -64,13 +65,15 @@ def fotos_laden(screen_w, screen_h):           #fotos inladen en schalen
             image = pygame.image.load("/home/pi/usbdrv/"+file)
             image = rotate_image("/home/pi/usbdrv/"+file, image)
             #image = scale_binnen_grenzen(image, screen_w*(4/5), screen_h)
-            image = scale_binnen_grenzen(image, screen_w*(1304/1920), screen_h*(886/1080))
+            image = scale_binnen_grenzen(image, screen_w*(1304/1920), screen_h*(886/1080), smooth=True)
             yield image
     if (usbStickHasNoPhotos):
             for file in os.listdir("/home/pi/Pictures/Voorbeeldfotos"):
                     if file.endswith(".png")|file.endswith(".PNG")|file.endswith(".jpg")|file.endswith(".JPG")|file.endswith(".jpeg")|file.endswith(".JPEG"):
                             image = pygame.image.load("/home/pi/Pictures/Voorbeeldfotos/"+file)
-                            image = scale_binnen_grenzen(image, screen_w*(3/5), screen_h*(3/5))
+                            image = rotate_image("/home/pi/Pictures/Voorbeeldfotos/"+file, image)
+                            #image = scale_binnen_grenzen(image, screen_w*(4/5), screen_h)
+                            image = scale_binnen_grenzen(image, screen_w*(1304/1920), screen_h*(886/1080), smooth=True)
                             yield image
 
 def rotate_image(file_path, image):
@@ -88,24 +91,14 @@ def rotate_image(file_path, image):
             elif (str(tags[tag]) == 'Rotated 90 CW'):
                 image = pygame.transform.rotate(image, 270)
                 break
-##0x0112: ('Orientation', {
-##        1: 'Horizontal (normal)',
-##        2: 'Mirrored horizontal',
-##        3: 'Rotated 180',
-##        4: 'Mirrored vertical',
-##        5: 'Mirrored horizontal then rotated 90 CCW',
-##        6: 'Rotated 90 CCW',
-##        7: 'Mirrored horizontal then rotated 90 CW',
-##        8: 'Rotated 90 CW'
-##                }
     return image
 
 
 def kaartjes_scalen(screen_w, screen_h):
-    aantalOefeningen = 8
-    for file in os.listdir("/home/pi/Documents/Kaartjes"):
+    aantalOefeningen = 7
+    for file in os.listdir("/home/pi/Documents/Kaartjes_new"):
             if file.endswith(".png")|file.endswith(".PNG"):
-                    raw_kaartje = pygame.image.load("/home/pi/Documents/Kaartjes/"+file)
+                    raw_kaartje = pygame.image.load("/home/pi/Documents/Kaartjes_new/"+file)
                     for oefeningNummer in range(0, aantalOefeningen):
                             if file.startswith("%d" % oefeningNummer):
                                     groot_plaatje = pygame.transform.smoothscale(raw_kaartje,(int (screen_w/2.33),int(pygame.Surface.get_height(raw_kaartje)/pygame.Surface.get_width(raw_kaartje)*(screen_w/2.33))))
@@ -137,7 +130,7 @@ def menu_steps(sensors, screen, screen_w, screen_h, my_font, oefening_selected, 
     stap_rechts = pygame.image.load("/home/pi/Documents/Instructie/Stap_rechts.png")
     achtergrond = pygame.transform.scale(achtergrond, (screen_w, screen_h),)
     oefening_klaar = pygame.transform.scale(oefening_klaar, (screen_w, screen_h),)
-    stap_beide = scale_binnen_grenzen(stap_beide, screen_w/5, screen_h/5, smooth=True)
+    stap_beide = scale_binnen_grenzen(stap_beide, screen_w/6, screen_h/6, smooth=True)
     stap_links = scale_binnen_grenzen(stap_links, screen_w/10, screen_h/10, smooth=True)
     stap_rechts = scale_binnen_grenzen(stap_rechts, screen_w/10, screen_h/10, smooth=True)
 
@@ -149,15 +142,15 @@ def menu_steps(sensors, screen, screen_w, screen_h, my_font, oefening_selected, 
     kaartjes_scalen(screen_w, screen_h)
     screen.blit(achtergrond, (0,0))
     screen.blit(opdracht_text,(screen_w/2-opdracht_text.get_width()/2,0))
-    screen.blit(stap_beide, (screen_w/2 - (stap_beide.get_width()/2), screen_h*(8/10) - (stap_beide.get_height()/2)))
-    screen.blit(stap_links, (screen_w*(1/5) - (stap_beide.get_width()/2), screen_h*(7/10) - (stap_beide.get_height()/2)))
-    screen.blit(stap_rechts, (screen_w*(4/5) - (stap_beide.get_width()/2), screen_h*(7/10) - (stap_beide.get_height()/2)))
 
     huidige_kaartje_x = ((screen_w/2)- pygame.Surface.get_width(grote_kaartjes[0][0])/2)
     huidige_kaartje_y = ((screen_h/2)- pygame.Surface.get_height(grote_kaartjes[0][0])/1.75)
     vorige_kaartje_x = ((huidige_kaartje_x/2)-pygame.Surface.get_width(kleine_kaartjes[1])/2)
     klein_kaartje_y = ((screen_h/2)- pygame.Surface.get_height(kleine_kaartjes[0])/1.75)
     volgende_kaartje_x = (((screen_w-(pygame.Surface.get_width(grote_kaartjes[0][0])+huidige_kaartje_x))/2+(pygame.Surface.get_width(grote_kaartjes[0][0])+huidige_kaartje_x))-pygame.Surface.get_width(kleine_kaartjes[0])/2)
+
+    screen.blit(stap_beide, (screen_w/2 - (stap_beide.get_width()/2), screen_h*(88/100) - (stap_beide.get_height()/2)))
+
 
     #dit moet 0 zijn omdat oefeningen bij 0 begint
     animatie = 0 #deze variabele reguleert de animatie
@@ -198,13 +191,16 @@ def menu_steps(sensors, screen, screen_w, screen_h, my_font, oefening_selected, 
         
         if (x-1 >= 0 ):
                 screen.blit(kleine_kaartjes[x-1], (vorige_kaartje_x,klein_kaartje_y))
+                screen.blit(stap_links, (screen_w*(13/100) - (stap_links.get_width()/2), screen_h*(77/100) - (stap_links.get_height()/2)))
         else:
                 screen.blit(achtergrond,(vorige_kaartje_x,klein_kaartje_y),(vorige_kaartje_x,klein_kaartje_y,pygame.Surface.get_width(kleine_kaartjes[0]),pygame.Surface.get_height(kleine_kaartjes[0])))
+                screen.blit(achtergrond, (screen_w*(13/100) - (stap_links.get_width()/2), screen_h*(77/100) - (stap_links.get_height()/2)), [screen_w*(13/100) - (stap_links.get_width()/2), screen_h*(77/100) - (stap_links.get_height()/2), stap_links.get_width(),stap_links.get_height()])
         if (x+1 < len(kleine_kaartjes)):
                 screen.blit(kleine_kaartjes[x+1], (volgende_kaartje_x,klein_kaartje_y))
+                screen.blit(stap_rechts, (screen_w*(87/100) - (stap_rechts.get_width()/2), screen_h*(77/100) - (stap_rechts.get_height()/2)))
         else:
                 screen.blit(achtergrond, (volgende_kaartje_x,klein_kaartje_y),(volgende_kaartje_x,klein_kaartje_y,pygame.Surface.get_width(kleine_kaartjes[0]),pygame.Surface.get_height(kleine_kaartjes[0])))
-
+                screen.blit(achtergrond, (screen_w*(87/100) - (stap_rechts.get_width()/2), screen_h*(77/100) - (stap_rechts.get_height()/2)), [screen_w*(87/100) - (stap_rechts.get_width()/2), screen_h*(77/100) - (stap_rechts.get_height()/2), stap_rechts.get_width(),stap_rechts.get_height()])
         screen.blit(grote_kaartjes[x][animatie], (huidige_kaartje_x,huidige_kaartje_y))
         #animatie
         animatie_counter += 1
@@ -239,53 +235,79 @@ def oefening_steps(init_info, oefening_chosen):
     fase = 1        #De oefeningen starten allemaal in fase 1
     houding = 1     #De oefeningen starten allemaal in houding 1
     pygame.mixer.Sound.play(houding1_audio)
+    random_x = set_random(screen_w)
+    random_y = set_random(screen_h)
     teller = 0
-    photo_x = 0
+    photo_pos_x = 0
+    #pygame.draw.rect(screen, (255,255,255),(screen_part_pos_x-50,screen_part_pos_y-50,photo.get_width()+100,photo.get_height()+100))
+    set_lijst(screen, photo, screen_w, screen_h, random_x, random_y)
+    set_blurred_achtergrond_photo(screen, photo, screen_w, screen_h, random_x, random_y)
     
     while (GPIO.input(4)!=1 and uitvoeringen_gedaan < uitvoeringen_totaal):
 
         check_keys()
         set_sensor_info(screen, achtergrond, oefening, oefening_chosen, houding, s_l, s_r, screen_h, screen_w)   #niet afhankelijk van de fase
 
+        print(fase)
         time.sleep(0.01)
         if(fase == 1):      #houding 1 aanhouden
             set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
 
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
-                photo_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal)
+                photo_pos_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)
+                print(photo_pos_x)
                 teller += 1                
-            if(photo_x >= photo.get_width()):         #houding 1 afgerond
+            if(photo_pos_x >= photo.get_width()):         #houding 1 afgerond
                 uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
+                vorige_photo = photo
+                vorige_random_x = random_x
+                vorige_random_y = random_y
                 photo = select_volgende_foto(foto_generator, screen_w, screen_h)    #alvast de volgende foto inladen
                 set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
+                random_x = set_random(screen_w)
+                random_y = set_random(screen_h)
                 houding = 2         #wisselen naar houding 2
                 teller = 0
+                photo_pos_x = 0
                 fase = 2
                 play_sound(houding2_audio)
         elif(fase == 2):    #wisselen naar houding 2
             #iets dat de gebruiker attendeert om te wisselen van houding
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
                 pygame.mixer.stop()
-                screen.blit(achtergrond, (screen_w/5,0), area=[screen_w/5,0,screen_w*(4/5),screen_h])   #achtergrond foto maken
+                #screen.blit(achtergrond, (screen_w/5,0), area=[screen_w/5,0,screen_w*(4/5),screen_h])   #achtergrond leeg maken
+                set_blurred_achtergrond_photo(screen, vorige_photo, screen_w, screen_h, vorige_random_x, vorige_random_y)
+                set_lijst(screen, photo, screen_w, screen_h, random_x, random_y)
+                set_blurred_achtergrond_photo(screen, photo, screen_w, screen_h, random_x, random_y)
                 fase = 3
         elif(fase == 3):    #houding 2 aanhouden
             set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
-                photo_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal)
+                photo_pos_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)
+                print(photo_pos_x)
                 teller += 1
-            if(photo_x >= photo.get_width()):         #houding 2 afgerond
+            if(photo_pos_x >= photo.get_width()):         #houding 2 afgerond
                 uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
+                vorige_photo = photo
+                vorige_random_x = random_x
+                vorige_random_y = random_y
                 photo = select_volgende_foto(foto_generator, screen_w, screen_h)    #alvast de volgende foto inladen
                 set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
+                random_x = set_random(screen_w)
+                random_y = set_random(screen_h)
                 houding = 1         #wisselen naar houding 1
                 teller = 0
+                photo_pos_x = 0
                 fase = 4
                 play_sound(houding1_audio)
         elif(fase == 4):    #wisselen naar houding 1
             #iets dat de gebruiker attendeert om te wisselen van houding
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
                 pygame.mixer.stop()
-                screen.blit(achtergrond, (screen_w/5,0), area=[screen_w/5,0,screen_w*(4/5),screen_h])   #achtergrond foto maken
+                #screen.blit(achtergrond, (screen_w/5,0), area=[screen_w/5,0,screen_w*(4/5),screen_h])   #achtergrond leeg maken
+                set_blurred_achtergrond_photo(screen, vorige_photo, screen_w, screen_h, vorige_random_x, vorige_random_y)
+                set_lijst(screen, photo, screen_w, screen_h, random_x, random_y)
+                set_blurred_achtergrond_photo(screen, photo, screen_w, screen_h, random_x, random_y)
                 fase = 1
     oefening_result = (uitvoeringen_gedaan, uitvoeringen_gedaan >= uitvoeringen_totaal)
     pygame.mixer.stop()
@@ -302,19 +324,66 @@ def oefening_steps(init_info, oefening_chosen):
             klaar_counter = 0
     return oefening_result
 
-def set_photo(screen, photo, screen_w, screen_h, teller, teller_totaal):
+def set_photo(screen, photo, screen_w, screen_h, teller, teller_totaal, random_x, random_y):
     photo_part_h = photo.get_height()
     photo_part_w = math.ceil(photo.get_width()/teller_totaal)
     photo_part_pos_x = photo_part_w * teller
     photo_part_pos_y = 0
-    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2 + (photo_part_w * teller)
-    screen_part_pos_y = screen_h*(537/1080) - photo_part_h/2
-
-    #print(screen_part_pos_x, photo_part_pos_x)
+    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2 + (photo_part_w * teller) + random_x
+    screen_part_pos_y = screen_h*(537/1080) - photo_part_h/2 + random_y
     
     screen.blit(photo, (screen_part_pos_x,screen_part_pos_y), area=[photo_part_pos_x,photo_part_pos_y,photo_part_w,photo_part_h]) # van links naar rechts
     pygame.display.update()
     return photo_part_pos_x
+
+def set_photo_blur(screen, photo, screen_w, screen_h, teller, teller_totaal):
+    photo_original_h = photo.get_height()
+    photo_original_w = photo.get_width()
+    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2
+    screen_part_pos_y = screen_h*(537/1080) - photo.get_height()/2
+    
+    if(teller >= teller_totaal-1):
+        screen.blit(photo, (screen_part_pos_x,screen_part_pos_y))
+    else:
+        scale = (teller*teller)/(teller_totaal*teller_totaal*3)
+        photo_scale_h = int(math.floor(photo_original_h*scale))+1
+        photo_scale_w = int(math.floor(photo_original_w*scale))+1
+        photo = pygame.transform.scale(photo, (photo_scale_w,photo_scale_h))
+        photo = pygame.transform.smoothscale(photo, (photo_original_w,photo_original_h))
+        screen.blit(photo, (screen_part_pos_x,screen_part_pos_y))
+    
+    pygame.display.update()
+    return teller 
+
+def set_blurred_achtergrond_photo(screen, photo, screen_w, screen_h, random_x, random_y):
+    photo_original_h = photo.get_height()
+    photo_original_w = photo.get_width()
+    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2 + random_x
+    screen_part_pos_y = screen_h*(537/1080) - photo.get_height()/2 + random_y
+    photo_scale_h = int(math.floor(photo_original_h/40))+1 # +1 om errors te voorkomen
+    photo_scale_w = int(math.floor(photo_original_w/40))+1
+    photo = pygame.transform.scale(photo, (photo_scale_w,photo_scale_h))
+    photo = pygame.transform.smoothscale(photo, (photo_original_w,photo_original_h))
+    screen.blit(photo, (screen_part_pos_x,screen_part_pos_y))
+
+def set_lijst(screen, photo, screen_w, screen_h, random_x, random_y):
+    screen_pos_x = screen_w*(1156/1920) - photo.get_width()/2 + random_x
+    screen_pos_y = screen_h*(537/1080) - photo.get_height()/2 + random_y
+
+    schaduw = pygame.Surface((photo.get_width()+45,photo.get_height()+45))
+    schaduw.set_alpha(100)
+    schaduw.fill((130,130,130))
+
+##    lijst = pygame.Surface((photo.get_width()+40,photo.get_height()+40))
+##    lijst.set_alpha(255)
+##    lijst.fill((255,255,255))
+##    schaduw.blit(lijst, (0,0))
+##    schaduw = pygame.transform.scale(schaduw, (100,100))
+##    schaduw = pygame.transform.smoothscale(schaduw, (photo.get_width()+45,photo.get_height()+45))
+    
+    screen.blit(schaduw, (screen_pos_x -20,screen_pos_y -20))
+    pygame.draw.rect(screen, (255,255,255),(screen_pos_x - 20,screen_pos_y -20,photo.get_width()+40,photo.get_height()+40))
+    pygame.draw.rect(screen, (129,130,135),(screen_pos_x ,screen_pos_y,photo.get_width(),photo.get_height()))
 
 def select_foto(volgende_foto):
     image = volgende_foto
@@ -322,7 +391,8 @@ def select_foto(volgende_foto):
     return photo
 
 def set_achtergrond(screen, screen_w, screen_h):
-    achtergrond = pygame.image.load("/home/pi/Documents/Instructie/Steps_oefening_achtergrond.jpg")
+    #achtergrond = pygame.image.load("/home/pi/Documents/Instructie/Steps_oefening_achtergrond.jpg")
+    achtergrond = pygame.image.load("/home/pi/Documents/Instructie/Steps_achtergrond_menu.png")
     #achtergrond = pygame.image.load("/home/pi/Documents/Photos/Steps_achtergrond_def.png")
     achtergrond = pygame.transform.scale(achtergrond, (screen_w, screen_h))
     screen.blit(achtergrond, (0,0))
@@ -361,7 +431,7 @@ class Oefening:
             self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
             #self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
         elif(oefening_chosen == 1):
-            self.teller_totaal = 150
+            self.teller_totaal = 50
             self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/14a_Zit_naar_stand_twee_handen.png")        #aanpasbare afbeelding
             #self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
@@ -561,6 +631,11 @@ def scale_binnen_grenzen(image, vak_w, vak_h, smooth=False):
         else:
             image = pygame.transform.scale(image, (int(vak_w), int(vak_w/image_ratio)))
     return image
+
+def set_random(screen_w_or_h):
+    random_x_or_y = random.randrange(-int(screen_w_or_h/40), int(screen_w_or_h/40))
+    return random_x_or_y
+
 
     ###     excel       ###
 
