@@ -226,7 +226,7 @@ def oefening_steps(init_info, oefening_chosen):
     achtergrond = set_achtergrond(screen, screen_w, screen_h)
     
     photo = select_volgende_foto(foto_generator, screen_w, screen_h)   #selecteerde de eerste foto, omdat deze functie nog niet eerder aangeroepen is.
-
+    
     oefening = Oefening(oefening_chosen, screen_w, screen_h)
     uitvoeringen_totaal = oefening.aantal_uitvoeringen
     uitvoeringen_gedaan = 0         #De oefening start altijd met 0 uitvoeringen.
@@ -254,10 +254,11 @@ def oefening_steps(init_info, oefening_chosen):
             set_houding(screen, screen_w, screen_h, achtergrond, 1, oefening)  #afgebeelde houding aanpassen als nodig
 
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
-                photo_pos_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)
-                print(photo_pos_x)
+	        #photo_pos_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)						#XANDER: SWITCH NAAR BLUR
+		teller = set_photo_blur(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)						#XANDER: SWITCH NAAR VAN LINKS NAAR RECHTS
                 teller += 1                
-            if(photo_pos_x >= photo.get_width()):         #houding 1 afgerond
+            #if(photo_pos_x >= photo.get_width()):         #houding 1 afgerond												#XANDER: SWITCH NAAR BLUR
+	    if(teller >= oefening.teller_totaal):															#XANDER: SWITCH NAAR VAN LINKS NAAR RECHTS
                 uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
                 vorige_photo = photo
                 vorige_random_x = random_x
@@ -283,10 +284,11 @@ def oefening_steps(init_info, oefening_chosen):
         elif(fase == 3):    #houding 2 aanhouden
             set_houding(screen, screen_w, screen_h, achtergrond, 2, oefening)  #afgebeelde houding aanpassen als nodig
             if(oefening.check_houding(oefening_chosen, houding, s_l, s_r)):      #hieruit komt een True of False
-                photo_pos_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)
-                print(photo_pos_x)
-                teller += 1
-            if(photo_pos_x >= photo.get_width()):         #houding 2 afgerond
+                #photo_pos_x = set_photo(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)						#XANDER: SWITCH NAAR BLUR
+		teller = set_photo_blur(screen, photo, screen_w, screen_h, teller, oefening.teller_totaal, random_x, random_y)						#XANDER: SWITCH NAAR VAN LINKS NAAR RECHTS
+                teller += 1                
+            #if(photo_pos_x >= photo.get_width()):         #houding 2 afgerond												#XANDER: SWITCH NAAR BLUR
+	    if(teller >= oefening.teller_totaal):															#XANDER: SWITCH NAAR VAN LINKS NAAR RECHT
                 uitvoeringen_gedaan = verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, uitvoeringen_gedaan, uitvoeringen_totaal, my_font)
                 vorige_photo = photo
                 vorige_random_x = random_x
@@ -336,11 +338,11 @@ def set_photo(screen, photo, screen_w, screen_h, teller, teller_totaal, random_x
     pygame.display.update()
     return photo_part_pos_x
 
-def set_photo_blur(screen, photo, screen_w, screen_h, teller, teller_totaal):
+def set_photo_blur(screen, photo, screen_w, screen_h, teller, teller_totaal, random_x, random_y):
     photo_original_h = photo.get_height()
     photo_original_w = photo.get_width()
-    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2
-    screen_part_pos_y = screen_h*(537/1080) - photo.get_height()/2
+    screen_part_pos_x = screen_w*(1156/1920) - photo.get_width()/2 + random_x
+    screen_part_pos_y = screen_h*(537/1080) - photo.get_height()/2 + random_y
     
     if(teller >= teller_totaal-1):
         screen.blit(photo, (screen_part_pos_x,screen_part_pos_y))
@@ -381,9 +383,9 @@ def set_lijst(screen, photo, screen_w, screen_h, random_x, random_y):
 ##    schaduw = pygame.transform.scale(schaduw, (100,100))
 ##    schaduw = pygame.transform.smoothscale(schaduw, (photo.get_width()+45,photo.get_height()+45))
     
-    screen.blit(schaduw, (screen_pos_x -20,screen_pos_y -20))
-    pygame.draw.rect(screen, (255,255,255),(screen_pos_x - 20,screen_pos_y -20,photo.get_width()+40,photo.get_height()+40))
-    pygame.draw.rect(screen, (129,130,135),(screen_pos_x ,screen_pos_y,photo.get_width(),photo.get_height()))
+    screen.blit(schaduw, (screen_pos_x -20,screen_pos_y -20)) #schaduw
+    pygame.draw.rect(screen, (255,255,255),(screen_pos_x - 20,screen_pos_y -20,photo.get_width()+40,photo.get_height()+40)) #witte lijst
+    pygame.draw.rect(screen, (129,130,135),(screen_pos_x ,screen_pos_y,photo.get_width(),photo.get_height())) #grijze vlak
 
 def select_foto(volgende_foto):
     image = volgende_foto
@@ -422,7 +424,7 @@ def verhoog_aantal_uitvoeringen(screen, achtergrond, screen_w, screen_h, aantal_
 class Oefening:
     def __init__(self, oefening_chosen, screen_w, screen_h):
         if(oefening_chosen == 0):
-            self.teller_totaal = 150
+            self.teller_totaal = 50
             self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/15c_Extensie_knie_in_zit.png")        #aanpasbare afbeelding
             self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
@@ -440,7 +442,7 @@ class Oefening:
             #self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
             self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
         elif(oefening_chosen == 2):
-            self.teller_totaal = 150
+            self.teller_totaal = 50
             self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/8a_achteruit_lopen_zonder.png")        #aanpasbare afbeelding
             #self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
@@ -458,7 +460,7 @@ class Oefening:
             #self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
             self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
         elif(oefening_chosen == 4):
-            self.teller_totaal = 150
+            self.teller_totaal = 50
             self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/1a_Hiel_naar_de_bil.png")        #aanpasbare afbeelding
             #self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
@@ -467,7 +469,7 @@ class Oefening:
             #self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
             self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
         elif(oefening_chosen == 5):
-            self.teller_totaal = 150
+            self.teller_totaal = 50
             self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/12c_Tien_seconden_op_1_been_staan_met_steun.png")        #aanpasbare afbeelding
             #self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
@@ -476,7 +478,7 @@ class Oefening:
             #self.image_houding2 = scale_binnen_grenzen(self.image_houding2, screen_w/5, screen_h*(2/5),smooth=True)
             self.image_houding2 = pygame.transform.smoothscale(self.image_houding2, (int(screen_w/100)*14, int(screen_w/100)*20))
         elif(oefening_chosen == 6):
-            self.teller_totaal = 150
+            self.teller_totaal = 50
             self.aantal_uitvoeringen = 10
             self.image_houding1 = pygame.image.load("/home/pi/Documents/Oefeningen/13c_Tien_seconden_op_1_been_staan_zonder_steun.png")        #aanpasbare afbeelding
             #self.image_houding1 = scale_binnen_grenzen(self.image_houding1, screen_w/5, screen_h*(2/5), smooth=True)
