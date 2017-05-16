@@ -1,5 +1,18 @@
-#!/usr/bin/python
 import os
+
+if os.path.exists("/dev/sda1"):
+    os.system("sudo mount /dev/sda1 /home/pi/usbdrv")
+else:
+    a = 0
+
+
+
+
+
+
+
+
+
 
 #def disk_exists(path):
 #	try:
@@ -9,6 +22,4 @@ import os
 
 #if disk_exists("/dev/sda1"):
 #	print("writing to usbdrv")
-os.system("sudo mount /dev/sda1 /home/pi/usbdrv")
-#else:
-#	print("no usb connected")
+
